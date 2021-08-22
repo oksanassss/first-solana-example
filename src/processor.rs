@@ -1,17 +1,20 @@
-use crate::{ state::State};
+use crate::{instruction::ProgramInstruction, state::State};
 use solana_program::{
-    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult,
-    pubkey::Pubkey,
+    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
 };
 
 entrypoint!(process_instruction);
 fn process_instruction<'a>(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &'a [AccountInfo<'a>],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    if let Err(error) = State::process_instruction(program_id, accounts, instruction_data) {
-        return Err(error);
+    let instruction = ProgramInstruction::unpack(instruction_data)?;
+    match instruction {
+        ProgramInstruction::InitializeAccount => Ok(()),
+        ProgramInstruction::SetName { name } => State::process_change_name(accounts, name),
+        ProgramInstruction::SetSurname { surname } => {
+            State::process_change_surname(accounts, surname)
+        }
     }
-    Ok(())
 }

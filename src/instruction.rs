@@ -1,3 +1,5 @@
+use crate::errors::SampleError;
+
 use {borsh::BorshDeserialize, solana_program::program_error::ProgramError};
 
 #[derive(Debug, PartialEq)]
@@ -15,26 +17,13 @@ impl ProgramInstruction {
         let block = Vec::<Vec<u8>>::try_from_slice(input).unwrap();
         match block[0][0] {
             0 => Ok(ProgramInstruction::InitializeAccount),
-            1 => Ok(Self::MintToAccount {
-                key: String::try_from_slice(&block[1])?,
-                value: String::try_from_slice(&block[2])?,
+            1 => Ok(Self::SetName {
+                name: String::try_from_slice(&block[1])?,
             }),
-            2 => Ok(Self::TransferBetweenAccounts {
-                key: String::try_from_slice(&block[1])?,
+            2 => Ok(Self::SetSurname {
+                surname: String::try_from_slice(&block[1])?,
             }),
-            3 => Ok(Self::BurnFromAccount {
-                key: String::try_from_slice(&block[1])?,
-            }),
-            4 => Ok(Self::MintToAccountWithFee {
-                key: String::try_from_slice(&block[1])?,
-                value: String::try_from_slice(&block[2])?,
-            }),
-            5 => Ok(Self::TransferBetweenAccountsWithFee {
-                key: String::try_from_slice(&block[1])?,
-            }),
-            6 => Ok(Self::BurnFromAccountWithFee {
-                key: String::try_from_slice(&block[1])?,
-            }),
+            _ => Err(SampleError::DeserializationFailure.into()),
         }
     }
 }

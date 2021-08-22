@@ -1,4 +1,3 @@
-use crate::errors::SampleError;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -19,12 +18,6 @@ impl Default for State {
     fn default() -> Self {
         Self::Unallocated
     }
-}
-
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, PartialEq)]
-pub enum ProgramInstruction {
-    SetName { name: String },
-    SetSurname { surname: String },
 }
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, PartialEq)]
@@ -53,38 +46,7 @@ impl Pack for UserData {
 }
 
 impl State {
-    pub fn process_instruction(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-        input: &[u8],
-    ) -> ProgramResult {
-        let instruction_vec = Vec::<Vec<u8>>::try_from_slice(input).unwrap();
-        match instruction_vec[0][0] {
-            0 => {
-                let in_string = String::try_from_slice(&instruction_vec[1]).unwrap();
-                // etc...
-                Ok(())
-            }
-            1 => {
-                // etc.
-                Ok()
-            }
-            _ => Err(SampleError::DeserializationFailure.into()),
-        }
-        // let instruction = ProgramInstruction::try_from_slice(input)
-        //     .map_err(|_| ProgramError::InvalidInstructionData)?;
-
-        // match instruction {
-        //     ProgramInstruction::SetName { name } => {
-        //         msg!("Instruction: SetName");
-        //         State::process_change_name(accounts, name)?;
-        //     }
-        //     ProgramInstruction::SetSurname { surname } => {
-        //         msg!("Instruction: SetSurname");
-        //         State::process_change_name(accounts, surname)?;
-        //     }
-        // }
-
+    pub fn process_initialization(_accounts: &[AccountInfo]) -> ProgramResult {
         Ok(())
     }
 
