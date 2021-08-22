@@ -1,3 +1,4 @@
+use crate::errors::SampleError;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -57,17 +58,19 @@ impl State {
         accounts: &[AccountInfo],
         input: &[u8],
     ) -> ProgramResult {
-
-        let instruction_vec = Vec::Vec<u8>::try_from_slice(input).unwrap();
+        let instruction_vec = Vec::<Vec<u8>>::try_from_slice(input).unwrap();
         match instruction_vec[0][0] {
             0 => {
-                 let in_string = String::try_from_slice(instruction_vec[1]).unwrap();
-                 // etc...
-                 }
+                let in_string = String::try_from_slice(&instruction_vec[1]).unwrap();
+                // etc...
+                Ok(())
+            }
             1 => {
-                 // etc.
-                 }
-                }
+                // etc.
+                Ok()
+            }
+            _ => Err(SampleError::DeserializationFailure.into()),
+        }
         // let instruction = ProgramInstruction::try_from_slice(input)
         //     .map_err(|_| ProgramError::InvalidInstructionData)?;
 
@@ -105,8 +108,6 @@ impl State {
         Ok(())
     }
 }
-
-
 
 // // Sanity tests
 // #[cfg(test)]

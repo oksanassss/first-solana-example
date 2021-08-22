@@ -4,12 +4,8 @@ use {borsh::BorshDeserialize, solana_program::program_error::ProgramError};
 /// All custom program instructions
 pub enum ProgramInstruction {
     InitializeAccount,
-    MintToAccount { key: String, value: String },
-    TransferBetweenAccounts { key: String },
-    BurnFromAccount { key: String },
-    MintToAccountWithFee { key: String, value: String },
-    TransferBetweenAccountsWithFee { key: String },
-    BurnFromAccountWithFee { key: String },
+    SetName { name: String },
+    SetSurname { surname: String },
 }
 
 impl ProgramInstruction {
