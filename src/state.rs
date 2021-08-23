@@ -64,7 +64,7 @@ impl Pack for UserData {
         let (is_initialized_dst, data_len_dst, data_dst) =
             mut_array_refs![dst, INITIALIZED_BYTE, USERDATA_LENGTH, USERDATA_STORAGE];
         // Set the initialized flag
-        is_initialized_dst[0] = self.is_initialized() as u8;
+        is_initialized_dst[0] = self.is_initialized as u8;
         // Store the core data length and serialized content
         let user_store_data = self.try_to_vec().unwrap();
         let data_len = user_store_data.len();
