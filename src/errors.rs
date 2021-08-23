@@ -10,6 +10,7 @@ use thiserror::Error;
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum SampleError {
     DeserializationFailure,
+    AlreadyInitializedState,
 }
 
 impl From<SampleError> for ProgramError {
@@ -27,6 +28,7 @@ impl fmt::Display for SampleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SampleError::DeserializationFailure => f.write_str("Error Deserializing input data"),
+            SampleError::AlreadyInitializedState => f.write_str("Account Already Initialized"),
         }
     }
 }
@@ -38,6 +40,7 @@ impl PrintProgramError for SampleError {
     {
         match self {
             SampleError::DeserializationFailure => println!("Error Deserializing input data"),
+            SampleError::AlreadyInitializedState => println!("Account Already Initialized"),
         }
     }
 }

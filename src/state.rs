@@ -1,73 +1,102 @@
+use arrayref::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    msg,
     program_error::ProgramError,
-    program_pack::{Pack, Sealed},
-    pubkey::Pubkey,
+    program_memory::sol_memcpy,
+    program_pack::{IsInitialized, Pack, Sealed},
 };
 
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
-pub enum State {
-    Unallocated,
-    Invalid,
-}
-impl Default for State {
-    fn default() -> Self {
-        Self::Unallocated
-    }
-}
+/// Initialization flag size for account state
+const INITIALIZED_BYTE: usize = 1;
+/// Storage for the serialized size of the UserData instance
+const USERDATA_LENGTH: usize = 4;
+/// Storage for the serialized UserData container
+pub const USERDATA_STORAGE: usize = 1019;
+/// Sum of all account state lengths
+pub const USERDATA_STATE_SPACE: usize = INITIALIZED_BYTE + USERDATA_LENGTH + USERDATA_STORAGE;
 
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(Debug, Default, BorshSerialize, BorshDeserialize, PartialEq)]
 pub struct UserData {
-    pub name: String,
-    pub surname: String,
+    is_initialized: bool,
+    name: String,
+    surname: String,
 }
 
 impl Sealed for UserData {}
 
-impl Pack for UserData {
-    const LEN: usize = 96;
-
-    fn pack_into_slice(&self, dst: &mut [u8]) {
-        let mut slice = dst;
-        self.serialize(&mut slice).unwrap()
-    }
-
-    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        let mut p = src;
-        UserData::deserialize(&mut p).map_err(|_| {
-            msg!("Failed to deserialize name record");
-            ProgramError::InvalidAccountData
-        })
+impl IsInitialized for UserData {
+    fn is_initialized(&self) -> bool {
+        self.is_initialized
     }
 }
 
-impl State {
-    pub fn process_initialization(_accounts: &[AccountInfo]) -> ProgramResult {
-        Ok(())
+impl UserData {
+    /// Check that the UserData 'state' is initialized
+    pub fn set_initialized(&mut self, init_flag: bool) {
+        self.is_initialized = init_flag;
+    }
+    /// Sets the name for the UserData
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+    /// Sets the surnam for the UserData
+    pub fn set_surname(&mut self, surname: String) {
+        self.surname = surname;
     }
 
-    pub fn process_change_name(accounts: &[AccountInfo], name: String) -> ProgramResult {
-        let accounts_iter = &mut accounts.iter();
-        let storage_account = next_account_info(accounts_iter)?;
-
-        let mut my_user = UserData::unpack_from_slice(&storage_account.data.borrow())?;
-        my_user.name = name;
-        my_user.pack_into_slice(&mut storage_account.data.borrow_mut()[..UserData::LEN]);
-        Ok(())
+    /// Gets the UserData name
+    pub fn name_as_ref(&self) -> &String {
+        &self.name
     }
 
-    pub fn process_change_surname(accounts: &[AccountInfo], surname: String) -> ProgramResult {
-        let accounts_iter = &mut accounts.iter();
-        let storage_account = next_account_info(accounts_iter)?;
+    /// Gets the UserData surname
+    pub fn surname_as_ref(&self) -> &String {
+        &self.surname
+    }
+}
 
-        let mut my_user = UserData::unpack_from_slice(&storage_account.data.borrow())?;
-        my_user.surname = surname;
-        my_user.pack_into_slice(&mut storage_account.data.borrow_mut()[..UserData::LEN]);
-        Ok(())
+impl Pack for UserData {
+    const LEN: usize = USERDATA_STATE_SPACE;
+    #[allow(clippy::ptr_offset_with_cast)]
+    fn pack_into_slice(&self, dst: &mut [u8]) {
+        let dst = array_mut_ref![dst, 0, USERDATA_STATE_SPACE];
+        // Setup pointers to key areas of account state data
+        let (is_initialized_dst, data_len_dst, data_dst) =
+            mut_array_refs![dst, INITIALIZED_BYTE, USERDATA_LENGTH, USERDATA_STORAGE];
+        // Set the initialized flag
+        is_initialized_dst[0] = self.is_initialized() as u8;
+        // Store the core data length and serialized content
+        let user_store_data = self.try_to_vec().unwrap();
+        let data_len = user_store_data.len();
+        if data_len < USERDATA_STORAGE {
+            data_len_dst[..].copy_from_slice(&(data_len as u32).to_le_bytes());
+            sol_memcpy(data_dst, &user_store_data, data_len);
+        } else {
+            panic!();
+        }
+    }
+    #[allow(clippy::ptr_offset_with_cast)]
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+        let src = array_ref![src, 0, USERDATA_STATE_SPACE];
+        // Setup pointers to key areas of account state data
+        let (is_initialized_src, data_len_src, data_src) =
+            array_refs![src, INITIALIZED_BYTE, USERDATA_LENGTH, USERDATA_STORAGE];
+        let is_initialized = match is_initialized_src {
+            [0] => false,
+            [1] => true,
+            _ => true,
+        };
+
+        // Get current size of content in data area
+        let data_len = u32::from_le_bytes(*data_len_src) as usize;
+        // If emptry, create a default
+        if data_len == 0 {
+            Ok(Self::default())
+        } else {
+            let mut data_dser = UserData::try_from_slice(&data_src[0..data_len]).unwrap();
+            data_dser.set_initialized(is_initialized);
+            Ok(data_dser)
+        }
     }
 }
 
